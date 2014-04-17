@@ -910,12 +910,13 @@ svc_rqst_thrd_run_epoll(struct svc_rqst_rec *sr_rec, uint32_t
 	int timeout_ms = 120 * 1000;	/* XXX */
 	int n_events;
 	static uint32_t wakeups;
+	uint32_t wakeup_i;
 
 	for (;;) {
 
 		mutex_lock(&sr_rec->mtx);
 
-		++(wakeups);
+		wakeup_i = atomic_inc_uint32_t(&wakeups);
 
 		/* check for signals */
 		if (sr_rec->signals & SVC_RQST_SIGNAL_SHUTDOWN) {
@@ -947,7 +948,7 @@ svc_rqst_thrd_run_epoll(struct svc_rqst_rec *sr_rec, uint32_t
 			/* new events */
 			for (ix = 0; ix < n_events; ++ix) {
 				ev = &(sr_rec->ev_u.epoll.events[ix]);
-				svc_rqst_handle_event(sr_rec, ev, wakeups);
+				svc_rqst_handle_event(sr_rec, ev, wakeup_i);
 			}
 		}
 	}
