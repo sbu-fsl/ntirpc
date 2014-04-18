@@ -710,7 +710,7 @@ svc_rqst_hook_events(SVCXPRT *xprt /* LOCKED */ ,
 	cond_init_svc_rqst();
 
 	xp_ev = (struct svc_xprt_ev *)xprt->xp_ev;
-	xp_ev->flags &= ~XP_EV_FLAG_BLOCKED;
+	atomic_clear_uint32_t_bits(&xp_ev->flags, XP_EV_FLAG_BLOCKED);
 
 	switch (sr_rec->ev_type) {
 #if defined(TIRPC_EPOLL)
@@ -729,7 +729,8 @@ svc_rqst_hook_events(SVCXPRT *xprt /* LOCKED */ ,
 			    epoll_ctl(sr_rec->ev_u.epoll.epoll_fd,
 				      EPOLL_CTL_ADD, xprt->xp_fd, ev);
 			if (!code)
-				xp_ev->flags |= XP_EV_FLAG_ADDED;
+				atomic_set_uint32_t_bits(&xp_ev->flags,
+							 XP_EV_FLAG_ADDED);
 
 			__warnx(TIRPC_DEBUG_FLAG_SVC_RQST,
 				"%s: add xprt %p fd %d sr_rec %p epoll_fd %d control fd "
@@ -847,7 +848,8 @@ svc_rqst_handle_event(struct svc_rqst_rec *sr_rec, struct epoll_event *ev,
 		xprt = (SVCXPRT *) ev->data.ptr;
 		xp_ev = (struct svc_xprt_ev *)xprt->xp_ev;
 
-		if (!(xp_ev->flags & XP_EV_FLAG_BLOCKED)) {
+		if (!(atomic_fetch_uint32_t(&xp_ev->flags) &
+		      XP_EV_FLAG_BLOCKED)) {
 			/* check for valid xprt */
 			mutex_lock(&xprt->xp_lock);
 
